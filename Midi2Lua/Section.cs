@@ -1,5 +1,4 @@
-﻿using System;
-namespace MidiToLua {
+﻿namespace MidiToLua {
     public class Section {
         public int samples, sampleBegin, sampleEnd, midiBegin, midiEnd;
         public double multiplier;

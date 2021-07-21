@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace MidiToLua {
+﻿namespace MidiToLua {
     public class NoteEvent {
         public string note;
         public int position;
