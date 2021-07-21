@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "YTPND8Aod2E4leLZFzsszUkIb/Ugq7CPbyqHpOJkBIw6NgGM1g3FsDLhbhHBWOZRPryDYTmI1hKFXfgM1t1ahQ==",
+  "success": true,
+  "projectFilePath": "C:\\Users\\c2_05\\source\\repos\\Midi2Lua\\Midi2Lua\\MidiToLua.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\c2_05\\.nuget\\packages\\melanchall.drywetmidi\\5.2.1\\melanchall.drywetmidi.5.2.1.nupkg.sha512"
+  ],
+  "logs": []
+}
