@@ -43,7 +43,8 @@ namespace MidiToLua {
                 }
             }
 
-            Console.WriteLine("done");
+            Console.WriteLine("Finished writing Lua scripts.");
+
             Console.ReadKey();
         }
 
