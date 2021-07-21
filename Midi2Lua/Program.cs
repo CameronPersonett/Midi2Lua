@@ -29,7 +29,7 @@ namespace MidiToLua {
                 if(name.Substring(name.Length - 4, 4).Equals(".mid")) {
                     midi = MidiFile.Read(files[i]);
 
-                    song = new Song(name);
+                    song = new Song(name.Replace(".mid", ""));
 
                     BuildSong();
 
@@ -109,6 +109,12 @@ namespace MidiToLua {
         private static void BuildScript() {
             lua = new List<string>();
 
+            lua.Add("function add(sample, note, instrument)");
+            lua.Add("    table.insert(song.samples[sample].noteEvents, " +
+                "{ note = note, instrument = instrument }");
+            lua.Add("end");
+            lua.Add("");
+
             lua.Add("song = {}");
             lua.Add("song.name = \'" + song.name + "\'");
             lua.Add("song.samples = {}");
@@ -121,10 +127,8 @@ namespace MidiToLua {
             lua.Add("");
 
             for(int i = 0; i < song.noteEvents.Count; i++) {
-                lua.Add("song.samples[" + (GetSampleNumber(song.noteEvents[i].position) + 1) +
-                    "].noteEvents[#song.samples[" + (GetSampleNumber(song.noteEvents[i].position) + 1) +
-                    "].noteEvents+1] = { note='" + song.noteEvents[i].note +
-                    "', instrument='" + song.noteEvents[i].instrument + "' }");
+                lua.Add("add(" + (GetSampleNumber(song.noteEvents[i].position) + 1) + ", '" +
+                    song.noteEvents[i].note + "', '" + song.noteEvents[i].instrument + "')");
             }
         }
 
