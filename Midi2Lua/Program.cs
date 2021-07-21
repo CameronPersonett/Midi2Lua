@@ -24,6 +24,11 @@ namespace MidiToLua {
 
             for(int i = 0; i < files.Length; i++) {
                 string[] split = files[i].Split("/");
+
+                if(split.Length == 1) {
+                    split = files[i].Split("\\");
+                }
+
                 string name = split[split.Length - 1];
 
                 if(name.Substring(name.Length - 4, 4).Equals(".mid")) {
@@ -221,7 +226,12 @@ namespace MidiToLua {
                 lua.Add("add(" + (GetSampleNumber(song.noteEvents[i].position) + 1) + ", " +
                     song.noteEvents[i].GetNoteVar() + ", " +
                     song.noteEvents[i].GetInstrumentVar() + ")");
-            }
+            } lua.Add("");
+
+            lua.Add("packet = {}");
+            lua.Add("packet.command = 'queue'");
+            lua.Add("packet.song = song");
+            lua.Add("rednet.broadcast(packet, 'JBPP')");
         }
 
         private static void WriteScript() {
