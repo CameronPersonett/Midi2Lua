@@ -4,8 +4,6 @@ using System.IO;
 using Melanchall.DryWetMidi.Core;
 using Melanchall.DryWetMidi.Interaction;
 
-// v1.0 CMPE - Initial commit
-
 namespace MidiToLua {
     class Program {
         private static string path;
