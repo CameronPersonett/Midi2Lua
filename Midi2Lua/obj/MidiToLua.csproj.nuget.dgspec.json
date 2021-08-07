@@ -49,6 +49,10 @@
             "Melanchall.DryWetMidi": {
               "target": "Package",
               "version": "[5.2.1, )"
+            },
+            "PastebinAPI": {
+              "target": "Package",
+              "version": "[1.1.1, )"
             }
           },
           "imports": [

@@ -1,37 +1,108 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Runtime.InteropServices;
+using System.Text;
+using System.Threading.Tasks;
+using System.Xml;
 using Melanchall.DryWetMidi.Core;
 using Melanchall.DryWetMidi.Interaction;
+using PastebinAPI;
 
 namespace MidiToLua {
     class Program {
+        // Directory variables
+        private static string folderSeparator;
         private static string path;
 
+        // Midi/Lua conversion variables
         private static MidiFile midi;
-
         private static Song song;
-
         private static List<string> lua;
 
-        static void Main(string[] args) {
-            Console.WriteLine("Enter the absolute path to your midi files.");
-            path = Console.ReadLine();
+        // Pastebin variables
+        private static string devKey, username, password, userKey;
+        private static List<string> existingPastes;
+        private static List<Paste> newPastes;
 
+        static async Task Main(string[] args) {
+            InitConfig();
+            ConvertMidiToLua();
+            await PostToPastebin();
+            Console.ReadKey();
+        }
+
+        private static void InitConfig() {
+            folderSeparator = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "\\" : "/";
+
+            string curDir = Directory.GetCurrentDirectory();
+
+            if (!File.Exists(curDir + folderSeparator + "config.txt")) {
+                Console.WriteLine("This is the first time you're running this application. ");
+                Console.WriteLine("I need to ask a few things. Your answers will be saved for subsequent runs.");
+                Console.WriteLine("The config file can be found at: " + curDir + folderSeparator + "config.txt");
+                Console.WriteLine();
+
+                Console.WriteLine("Please enter the absolute path to your midi files.");
+                path = Console.ReadLine();
+                Console.WriteLine();
+
+                Console.WriteLine("Please enter your Pastebin dev key. Press enter to skip.");
+                devKey = Console.ReadLine();
+                Console.WriteLine();
+
+                Console.WriteLine("Please enter your Pastebin username. Press enter to skip.");
+                username = Console.ReadLine();
+                Console.WriteLine();
+
+                Console.WriteLine("Please enter your Pastebin password. Press enter to skip.");
+                password = Console.ReadLine();
+                Console.WriteLine();
+
+                List<string> config = new List<string>();
+                config.Add("path=" + path);
+                config.Add("devKey=" + devKey);
+                config.Add("username=" + username);
+                config.Add("password=" + password);
+                File.WriteAllLines("config.txt", config);
+            } else {
+                string[] lines = File.ReadAllLines(curDir + folderSeparator + "config.txt");
+
+                foreach (string line in lines) {
+                    string[] split = line.Split("=");
+
+                    if (split[0].Equals("path")) {
+                        path = split[1];
+                    } else if (split[0].Equals("devKey")) {
+                        devKey = split[1];
+                    } else if (split[0].Equals("username")) {
+                        username = split[1];
+                    } else if (split[0].Equals("password")) {
+                        password = split[1];
+                    }
+                }
+            }
+
+            if (devKey.Equals("") || username.Equals("") || password.Equals("")) {
+                Console.WriteLine("One or more pieces of information regarding your Pastebin account is missing.");
+                Console.WriteLine("This means we won't be able to automatically add these Lua files to Pastebin.");
+                Console.WriteLine("Lua files will still be dumped into a folder named \"lua\" in your midi file directory.");
+                Console.WriteLine();
+            }
+        }
+
+        private static void ConvertMidiToLua() {
             Directory.CreateDirectory(path + "/lua");
 
             string[] files = Directory.GetFiles(path);
 
-            for(int i = 0; i < files.Length; i++) {
+            for (int i = 0; i < files.Length; i++) {
                 string[] split = files[i].Split("/");
-
-                if(split.Length == 1) {
-                    split = files[i].Split("\\");
-                }
-
                 string name = split[split.Length - 1];
 
-                if(name.Substring(name.Length - 4, 4).Equals(".mid")) {
+                if (name.Substring(name.Length - 4, 4).Equals(".mid")) {
                     midi = MidiFile.Read(files[i]);
 
                     song = new Song(name.Replace(".mid", ""));
@@ -49,8 +120,7 @@ namespace MidiToLua {
             }
 
             Console.WriteLine("Finished writing Lua scripts.");
-
-            Console.ReadKey();
+            Console.WriteLine();
         }
 
         private static void BuildSong() {
@@ -67,22 +137,20 @@ namespace MidiToLua {
             int midiEnd;
             int curSectionTicks;
             double curSectionSecs;
-            double multiplier;
             double seconds = 0;
             Section sec;
 
-            foreach(ValueChange<Tempo> tempoChange in tempoMap.GetTempoChanges()) {
+            foreach (ValueChange<Tempo> tempoChange in tempoMap.GetTempoChanges()) {
                 MidiTimeSpan curSpan = new MidiTimeSpan(tempoChange.Time);
                 int curTime = (int)tempoChange.Time;
 
                 curSectionSecs = ((60d / (double)bpm) * (((double)curTime - (double)previousLoc) / 480d));
                 curSectionTicks = (int)(curSectionSecs * 20);
 
-                if(curSectionTicks > 0) {
+                if (curSectionTicks > 0) {
                     sampleEnd = curSectionTicks + sampleBegin;
                     midiEnd = curTime;
-                    multiplier = ((double)curTime - (double)previousLoc) / (double)curSectionTicks;
-                    sec = new Section(sampleBegin, sampleEnd, midiBegin, midiEnd, multiplier);
+                    sec = new Section(sampleBegin, sampleEnd, midiBegin, midiEnd);
                     song.AddSection(sec);
                     sampleBegin = sampleEnd;
                 }
@@ -93,16 +161,15 @@ namespace MidiToLua {
 
             curSectionSecs = seconds + ((60d / (double)bpm) * (((double)duration - (double)previousLoc) / 480d));
             curSectionTicks = (int)(curSectionSecs * 20);
-            multiplier = (double)(((double)duration - (double)previousLoc) / (double)curSectionTicks);
             sampleEnd = curSectionTicks + sampleBegin;
             midiEnd = duration;
-            sec = new Section(sampleBegin, sampleEnd, midiBegin, midiEnd, multiplier);
+            sec = new Section(sampleBegin, sampleEnd, midiBegin, midiEnd);
             song.AddSection(sec);
         }
 
         private static void BuildNoteEvents() {
-            foreach(Chord chord in midi.GetChords()) {
-                foreach(Note note in chord.Notes) {
+            foreach (Chord chord in midi.GetChords()) {
+                foreach (Note note in chord.Notes) {
                     int channel = chord.Channel;
                     string mtNote = note.GetMusicTheoryNote().ToString();
                     int position = (int)chord.Time;
@@ -222,16 +289,17 @@ namespace MidiToLua {
             lua.Add("end");
             lua.Add("");
 
-            for(int i = 0; i < song.noteEvents.Count; i++) {
+            for (int i = 0; i < song.noteEvents.Count; i++) {
                 lua.Add("add(" + (GetSampleNumber(song.noteEvents[i].position) + 1) + ", " +
                     song.noteEvents[i].GetNoteVar() + ", " +
                     song.noteEvents[i].GetInstrumentVar() + ")");
-            } lua.Add("");
+            }
+            lua.Add("");
 
             lua.Add("packet = {}");
             lua.Add("packet.command = 'queue'");
             lua.Add("packet.song = song");
-            lua.Add("rednet.broadcast(packet, 'JBPP')");
+            lua.Add("rednet.broadcast(packet, 'JBPP'");
         }
 
         private static void WriteScript() {
@@ -239,14 +307,198 @@ namespace MidiToLua {
         }
 
         private static int GetSampleNumber(int location) {
-            for(int i = 0; i < song.sections.Count; i++) {
-                if(location >= song.sections[i].midiBegin &&
+            for (int i = 0; i < song.sections.Count; i++) {
+                if (location >= song.sections[i].midiBegin &&
                     location <= song.sections[i].midiEnd) {
                     int relLoc = location - song.sections[i].midiBegin;
                     int relEnd = song.sections[i].midiEnd - song.sections[i].midiBegin;
                     return (int)(((double)relLoc / (double)relEnd) * (double)song.sections[i].samples) + song.sections[i].sampleBegin;
                 }
-            } return -1;
+            }
+            return -1;
+        }
+
+        private static async Task PostToPastebin() {
+            if (!devKey.Equals("") && !username.Equals("") && !password.Equals("")) {
+                await LogIn();
+                await GetPasteNames();
+                await PushScripts();
+                await PushMetaScript();
+            } else {
+                Console.WriteLine("One or more of the pastebin parameters are empty. Can not push to Pastebin.");
+            }
+        }
+
+        private static async Task LogIn() {
+            using (var client = new HttpClient()) {
+                string[] parameters = new string[3];
+                parameters[0] = "api_dev_key=" + devKey;
+                parameters[1] = "api_user_name=" + username;
+                parameters[2] = "api_user_password=" + password;
+
+                string loginURL = "https://pastebin.com/api/api_login.php";
+
+                string postString = string.Join("&", parameters);
+                byte[] bytes = Encoding.UTF8.GetBytes(postString);
+                var postContent = new ByteArrayContent(bytes);
+                postContent.Headers.ContentType = new MediaTypeHeaderValue("application/x-www-form-urlencoded");
+                var response = await client.PostAsync(loginURL, postContent);
+                var result = await response.Content.ReadAsByteArrayAsync();
+                string resultText = "";
+
+                foreach (byte b in result) {
+                    resultText += Convert.ToChar(b);
+                }
+
+                if (resultText.ToLower().Contains("invalid")) {
+                    Console.WriteLine(resultText);
+                } else {
+                    userKey = resultText;
+                }
+            }
+        }
+
+        private static async Task GetPasteNames() {
+            existingPastes = new List<string>();
+
+            using (var client = new HttpClient()) {
+                string[] parameters = new string[4];
+                parameters[0] = "api_dev_key=" + devKey;
+                parameters[1] = "api_user_key=" + userKey;
+                parameters[2] = "api_results_limit=" + 1000;
+                parameters[3] = "api_option=" + "list";
+
+                string loginURL = "https://pastebin.com/api/api_post.php";
+
+                string postString = string.Join("&", parameters);
+                byte[] bytes = Encoding.UTF8.GetBytes(postString);
+                var postContent = new ByteArrayContent(bytes);
+                postContent.Headers.ContentType = new MediaTypeHeaderValue("application/x-www-form-urlencoded");
+                var response = await client.PostAsync(loginURL, postContent);
+                var result = await response.Content.ReadAsByteArrayAsync();
+                string resultText = "";
+
+                foreach (byte b in result) {
+                    resultText += Convert.ToChar(b);
+                }
+
+                XmlDocument xml = new XmlDocument();
+                xml.LoadXml("<pastes>" + resultText + "</pastes>");
+
+                XmlNode root = xml.SelectSingleNode("pastes");
+                XmlNodeList pastes = xml.GetElementsByTagName("paste");
+
+                foreach (XmlNode paste in pastes) {
+                    XmlNode title = paste.SelectSingleNode("paste_title");
+                    existingPastes.Add(title.FirstChild.Value);
+                }
+            }
+        }
+
+        private static async Task PushScripts() {
+            newPastes = new List<Paste>();
+
+            string[] luaFiles = Directory.GetFiles(path + folderSeparator + "lua");
+
+            foreach (string luaFile in luaFiles) {
+                string[] split = luaFile.Split(folderSeparator);
+                string name = split[split.Length - 1];
+                byte[] result;
+
+                if (existingPastes.Contains(name) && name.Split(".")[1].Equals("lua")) {
+                    Console.WriteLine(name + " already exists on Pastebin.");
+                } else if (name.Split(".")[1].Equals("lua")) {
+                    string script = File.ReadAllText(luaFile);
+
+                    using (var client = new HttpClient()) {
+                        var content = new StringContent(script, Encoding.UTF8, "application/json");
+
+                        string[] parameters = new string[9];
+                        parameters[0] = "api_dev_key=" + devKey;
+                        parameters[1] = "api_option=" + "paste";
+                        parameters[2] = "api_paste_code=" + script;
+                        parameters[3] = "api_user_key=" + userKey;
+                        parameters[4] = "api_paste_name=" + name;
+                        parameters[5] = "api_folder_key=" + "music";
+                        parameters[6] = "api_paste_format=" + Language.Lua;
+                        parameters[7] = "api_paste_private=" + (int)Visibility.Public;
+                        parameters[8] = "api_paste_expire_date=" + Expiration.Never;
+
+                        string postString = string.Join("&", parameters);
+                        byte[] bytes = Encoding.UTF8.GetBytes(postString);
+                        ByteArrayContent postContent = new ByteArrayContent(bytes);
+                        postContent.Headers.ContentType = new MediaTypeHeaderValue("application/x-www-form-urlencoded");
+                        HttpResponseMessage response = await client.PostAsync("https://pastebin.com/api/api_post.php", postContent);
+                        result = await response.Content.ReadAsByteArrayAsync();
+                    }
+
+                    string resultString = "";
+                    foreach (byte b in result) {
+                        resultString += Convert.ToChar(b);
+                    }
+
+                    if (resultString.ToLower().Contains("pastebin")) {
+                        string[] nameSplit = name.Split(".");
+                        string[] urlSplit = resultString.Split("/");
+                        newPastes.Add(new Paste(nameSplit[0], urlSplit[urlSplit.Length - 1]));
+                        Console.WriteLine("Pushed " + name + " to Pastebin");
+                    } else {
+                        Console.WriteLine(resultString);
+                        break;
+                    }
+                }
+            }
+        }
+
+        private static async Task PushMetaScript() {
+            List<string> metaLua = new List<string>();
+
+            foreach (Paste newPaste in newPastes) {
+                metaLua.Add("shell.run('pastebin', 'get', '" + newPaste.url + "', '" + newPaste.name + "')");
+            }
+
+            string mLuaText = "";
+            for (int i = 0; i < metaLua.Count; i++) {
+                mLuaText += metaLua[i] + "\n";
+            }
+
+            byte[] result;
+            using (var client = new HttpClient()) {
+                string[] parameters = new string[9];
+                parameters[0] = "api_dev_key=" + devKey;
+                parameters[1] = "api_option=" + "paste";
+                parameters[2] = "api_paste_code=" + mLuaText;
+                parameters[4] = "api_paste_name=" + DateTime.Today.ToShortDateString();
+                parameters[6] = "api_paste_format=" + Language.Lua;
+                parameters[7] = "api_paste_private=" + (int)Visibility.Public;
+                parameters[8] = "api_paste_expire_date=" + Expiration.Never;
+
+                string postString = string.Join("&", parameters);
+                byte[] bytes = Encoding.UTF8.GetBytes(postString);
+                ByteArrayContent postContent = new ByteArrayContent(bytes);
+                postContent.Headers.ContentType = new MediaTypeHeaderValue("application/x-www-form-urlencoded");
+                HttpResponseMessage response = await client.PostAsync("https://pastebin.com/api/api_post.php", postContent);
+                result = await response.Content.ReadAsByteArrayAsync();
+            }
+
+            string resultString = "";
+            foreach (byte b in result) {
+                resultString += Convert.ToChar(b);
+            }
+
+            if (resultString.ToLower().Contains("pastebin")) {
+                string[] resultSplit = resultString.Split("/");
+                Console.WriteLine("Copy the below line and paste it into a ComputerCraft terminal. Once downloaded, run the script.");
+                Console.WriteLine("This will download all of the previously pushed scripts into your computer.");
+                Console.WriteLine("pastebin get " + resultSplit[resultSplit.Length - 1] + " " + DateTime.Today.ToShortDateString());
+            } else {
+                Console.WriteLine("Could not push meta script to Pastebin. You will have to download the previously pushed scripts manually.");
+                Console.WriteLine("Here is the list of commands.");
+
+                foreach (Paste newPaste in newPastes) {
+                    Console.WriteLine("pastebin get " + newPaste.url + " " + newPaste.name);
+                }
+            }
         }
     }
 }
