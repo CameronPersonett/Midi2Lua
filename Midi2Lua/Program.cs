@@ -99,7 +99,7 @@ namespace MidiToLua {
             string[] files = Directory.GetFiles(path);
 
             for (int i = 0; i < files.Length; i++) {
-                string[] split = files[i].Split("/");
+                string[] split = files[i].Split(folderSeparator);
                 string name = split[split.Length - 1];
 
                 if (name.Substring(name.Length - 4, 4).Equals(".mid")) {
@@ -299,11 +299,11 @@ namespace MidiToLua {
             lua.Add("packet = {}");
             lua.Add("packet.command = 'queue'");
             lua.Add("packet.song = song");
-            lua.Add("rednet.broadcast(packet, 'JBPP'");
+            lua.Add("rednet.broadcast(packet, 'JBPP')");
         }
 
         private static void WriteScript() {
-            File.WriteAllLines(path + "/lua/" + song.name + ".lua", lua);
+            File.WriteAllLines(path + folderSeparator + "lua" + folderSeparator + song.name + ".lua", lua);
         }
 
         private static int GetSampleNumber(int location) {

@@ -13,3 +13,4 @@ C:\Users\c2_05\source\repos\Midi2Lua\Midi2Lua\obj\Debug\netcoreapp3.1\MidiToLua.
 C:\Users\c2_05\source\repos\Midi2Lua\Midi2Lua\obj\Debug\netcoreapp3.1\MidiToLua.dll
 C:\Users\c2_05\source\repos\Midi2Lua\Midi2Lua\obj\Debug\netcoreapp3.1\MidiToLua.pdb
 C:\Users\c2_05\source\repos\Midi2Lua\Midi2Lua\obj\Debug\netcoreapp3.1\MidiToLua.genruntimeconfig.cache
+C:\Users\c2_05\source\repos\Midi2Lua\Midi2Lua\bin\Debug\netcoreapp3.1\PastebinAPI.dll

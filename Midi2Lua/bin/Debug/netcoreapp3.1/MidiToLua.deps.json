@@ -8,7 +8,8 @@
     ".NETCoreApp,Version=v3.1": {
       "MidiToLua/1.0.0": {
         "dependencies": {
-          "Melanchall.DryWetMidi": "5.2.1"
+          "Melanchall.DryWetMidi": "5.2.1",
+          "PastebinAPI": "1.1.1"
         },
         "runtime": {
           "MidiToLua.dll": {}
@@ -19,6 +20,14 @@
           "lib/netstandard2.0/Melanchall.DryWetMidi.dll": {
             "assemblyVersion": "5.2.1.0",
             "fileVersion": "5.2.1.0"
+          }
+        }
+      },
+      "PastebinAPI/1.1.1": {
+        "runtime": {
+          "lib/netstandard2.0/PastebinAPI.dll": {
+            "assemblyVersion": "1.1.1.0",
+            "fileVersion": "1.1.1.0"
           }
         }
       }
@@ -36,6 +45,13 @@
       "sha512": "sha512-LMtff2kMFZJEhE8KXzaNye1oWyHyGaAu6sp/Taf45M5K+ZjEtWGZM4NmTX6bwLWfWj0e5oITFoQwrTONgothCQ==",
       "path": "melanchall.drywetmidi/5.2.1",
       "hashPath": "melanchall.drywetmidi.5.2.1.nupkg.sha512"
+    },
+    "PastebinAPI/1.1.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-Y4C4UQlmjfGZ9+hN2G38JVnpD8lyzMTN9zFto+/PGnRtcyOuWoH7cfR8Yfjkr/QN0gVQIArU+BClEwuEY9atSQ==",
+      "path": "pastebinapi/1.1.1",
+      "hashPath": "pastebinapi.1.1.1.nupkg.sha512"
     }
   }
 }
