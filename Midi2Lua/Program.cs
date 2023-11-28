@@ -30,7 +30,7 @@ namespace MidiToLua {
         static async Task Main(string[] args) {
             InitConfig();
             ConvertMidiToLua();
-            await PostToPastebin();
+            //await PostToPastebin();
             Console.ReadKey();
         }
 
@@ -299,7 +299,7 @@ namespace MidiToLua {
             lua.Add("packet = {}");
             lua.Add("packet.command = 'queue'");
             lua.Add("packet.song = song");
-            lua.Add("rednet.broadcast(packet, 'JBPP')");
+            lua.Add("rednet.broadcast(packet, 'JBP')");
         }
 
         private static void WriteScript() {
